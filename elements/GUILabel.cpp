@@ -35,7 +35,11 @@ class GUILabel: public GUIElement {
 	}
 	
 	void init() {
-		MCPE_Label_Label(real, real->msg, MCPE_Minecraft_instance, real->color, real->x, real->y, real->width, shadow);
+		int x = real->x;
+		int y = real->y;
+		MCPE_Label_Label(real, real->msg, MCPE_Minecraft_instance, real->color, 0, 0, real->width, shadow);
+		real->x = x;
+		real->y = y;
 	}
 	
 	void render(){
