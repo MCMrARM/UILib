@@ -32,10 +32,6 @@ class GUIHeader: public GUIElement {
 		real->height = height;
 	}
 
-	void init() {
-		//
-	}
-
 	void render(){
 		MCPE_Touch_THeader_render(real, MCPE_Minecraft_instance, 0, 0); // that x and y doesn't matter
 	}

@@ -28,6 +28,15 @@ void* MCPE_Handle;
 
 typedef void* MCPE_Minecraft;
 typedef void* MCPE_Gui;
+typedef void* MCPE_Item;
+typedef void* MCPE_Tile;
+typedef struct {
+	int count;
+	int damage;
+	MCPE_Item* item;
+	MCPE_Tile* tile;
+	int idk;
+} MCPE_ItemInstance;
 typedef struct {
 	void** vtable;
 } MCPE_Screen;
@@ -78,6 +87,8 @@ typedef struct {
 
 typedef void (*OnClick)(int);
 
+// item instance
+static void (*MCPE_ItemInstance_setId)(MCPE_ItemInstance*, int);
 // screen
 void** MCPE_Screen_vtable;
 static void (*MCPE_Screen_Screen)(MCPE_Screen*);
@@ -98,6 +109,8 @@ static void (*MCPE_Label_render)(MCPE_Label*, MCPE_Minecraft*, int, int);
 // header
 static void (*MCPE_Touch_THeader_THeader)(MCPE_Touch_THeader*, int, std::string);
 static void (*MCPE_Touch_THeader_render)(MCPE_Touch_THeader*, MCPE_Minecraft*, int, int);
+// item renderer
+static void (*MCPE_ItemRenderer_renderGuiItem)(MCPE_Textures*, MCPE_ItemInstance*, int, float, float, float, float, float);
 
 MCPE_Minecraft* MCPE_Minecraft_instance;
 
@@ -257,8 +270,11 @@ class GUIScreen: public GUIBaseScreen {
 	*/
 
 	void _handleBackEvent(bool b) {
-		currentScreen = guiScreen;
-		MCPE_Screen_handleBackEvent((MCPE_Screen*) this, b);
+		GUIScreen* vthis = (GUIScreen*) currentScreen;
+		if(!vthis->handleBackEvent()){
+			currentScreen = guiScreen;
+			MCPE_Screen_handleBackEvent((MCPE_Screen*) this, b);
+		}
 	}
 
 	public:
@@ -273,12 +289,17 @@ class GUIScreen: public GUIBaseScreen {
 
 		screen->vtable[2] = (void*) &GUIScreen::_render;
 		screen->vtable[3] = (void*) &GUIScreen::_init;
+
 		screen->vtable[10] = (void*) &GUIScreen::_handleBackEvent;
 		//screen->vtable[16] = (void*) &GUIScreen::_renderGameBehind; - doesn't work
 	}
 
 	void show() {
 		MCPE_Minecraft_setScreen(MCPE_Minecraft_instance, screen);
+	}
+
+	virtual bool handleBackEvent() {
+		return false;
 	}
 };
 
@@ -349,6 +370,8 @@ void setupGUI() {
 
 	MCPE_Handle = dlopen("libminecraftpe.so", RTLD_LAZY);
 
+	MCPE_ItemInstance_setId = (void (*)(MCPE_ItemInstance*, int)) dlsym(RTLD_DEFAULT, "_ZN12ItemInstance8_setItemEi");
+
 	MCPE_Screen_vtable = (void**) dlsym(RTLD_DEFAULT, "_ZTV6Screen");
 	//MCPE_Screen_vtable = (void**) dlsym(RTLD_DEFAULT, "_ZTV15StartMenuScreen");
 	//MCPE_Minecraft_setScreen = (void (*)(MCPE_Minecraft*, MCPE_Screen*)) dlsym(RTLD_DEFAULT, "_ZN9Minecraft9setScreenEP6Screen");
@@ -369,6 +392,8 @@ void setupGUI() {
 
 	MCPE_Touch_THeader_THeader = (void (*)(MCPE_Touch_THeader*, int, std::string)) dlsym(RTLD_DEFAULT, "_ZN5Touch7THeaderC2EiRKSs");
 	MCPE_Touch_THeader_render = (void (*)(MCPE_Touch_THeader*, MCPE_Minecraft*, int, int)) dlsym(RTLD_DEFAULT, "_ZN5Touch7THeader6renderEP9Minecraftii");
+
+	MCPE_ItemRenderer_renderGuiItem = (void (*)(MCPE_Textures*, MCPE_ItemInstance*, int, float, float, float, float, float)) dlsym(RTLD_DEFAULT, "_ZN12ItemRenderer16renderGuiItemNewEP8TexturesPK12ItemInstanceifffff");
 
 	void* mc = dlsym(RTLD_DEFAULT, "_ZN9Minecraft9tickInputEv");
 	mcpelauncher_hook(mc, (void*) &minecraft, (void**) &MCPE_Minecraft_tickInput);
