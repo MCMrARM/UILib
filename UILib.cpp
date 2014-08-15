@@ -38,9 +38,6 @@ typedef struct {
 	int idk;
 } MCPE_ItemInstance;
 typedef struct {
-	void** vtable;
-} MCPE_Screen;
-typedef struct {
 	void* vtable; // 4
 	int idk1; // 8; always 0? *possibly a pointer*
 	void* idk2; // 12
