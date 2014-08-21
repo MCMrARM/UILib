@@ -55,6 +55,9 @@ class GUIToggleButton: public GUIElement {
 	
 	bool touchStarted(int id, short x, short y){
 		toggle();
+		if(click != NULL) {
+			(*click)(real->id);
+		}
 		return true;
 	}
 	void touchMoved(int id, short x, short y){

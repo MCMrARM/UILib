@@ -28,8 +28,12 @@ void* MCPE_Handle;
 
 typedef void* MCPE_Minecraft;
 typedef void* MCPE_Gui;
-typedef void* MCPE_Item;
-typedef void* MCPE_Tile;
+typedef struct {
+	void** vtable;
+} MCPE_Item;
+typedef struct {
+	void** vtable;
+} MCPE_Tile;
 typedef struct {
 	int count;
 	int damage;
@@ -67,6 +71,20 @@ typedef struct {
 } MCPE_Touch_THeader;
 typedef struct {
 	void* vtable; // 4
+	int idk1; // 8; always 0? *possibly a pointer*
+	void* idk2; // 12
+	int x; // 16
+	int y; // 20
+	int width; // 24
+	int height; // 28
+	int idk3; // 32; always 0?
+	int idk4; // 36; always 0?
+	void* idk5; // 40; sometimes null
+	std::string msg; // 44
+	int id; // 48
+} MCPE_TextBox;
+typedef struct {
+	void* vtable; // 4
 	int idk1; // 8
 	void* idk2; // 12
 	int x; // 16
@@ -83,6 +101,7 @@ typedef struct {
 } MCPE_Label;
 
 typedef void (*OnClick)(int);
+typedef void (*OnTextInput)(void*, int);
 
 // item instance
 static void (*MCPE_ItemInstance_setId)(MCPE_ItemInstance*, int);
@@ -231,12 +250,14 @@ class GUIBaseScreen {
 GUIBaseScreen* currentScreen = NULL;
 bool currentScreenCustom;
 GUIBaseScreen* guiScreen = new GUIBaseScreen();
+void** customScreenVtable = NULL;
 
 const int BACKGROUND_DIRT = 0;
 const int BACKGROUND_GAME = 1;
 const int BACKGROUND_GAME_DARK = 2;
 const int BACKGROUND_MENU = 3;
 class GUIScreen: public GUIBaseScreen {
+public:
 	MCPE_Screen* screen;
 	int bgType;
 
@@ -268,7 +289,7 @@ class GUIScreen: public GUIBaseScreen {
 
 	void _handleBackEvent(bool b) {
 		GUIScreen* vthis = (GUIScreen*) currentScreen;
-		if(!vthis->handleBackEvent()){
+		if(vthis != NULL && !vthis->handleBackEvent()){
 			currentScreen = guiScreen;
 			MCPE_Screen_handleBackEvent((MCPE_Screen*) this, b);
 		}
@@ -283,10 +304,10 @@ class GUIScreen: public GUIBaseScreen {
 
 		screen = (MCPE_Screen*) operator new(0x8c);
 		MCPE_Screen_Screen(screen);
+		screen->vtable = customScreenVtable;
 
 		screen->vtable[2] = (void*) &GUIScreen::_render;
 		screen->vtable[3] = (void*) &GUIScreen::_init;
-
 		screen->vtable[10] = (void*) &GUIScreen::_handleBackEvent;
 		//screen->vtable[16] = (void*) &GUIScreen::_renderGameBehind; - doesn't work
 	}
@@ -369,8 +390,10 @@ void setupGUI() {
 
 	MCPE_ItemInstance_setId = (void (*)(MCPE_ItemInstance*, int)) dlsym(RTLD_DEFAULT, "_ZN12ItemInstance8_setItemEi");
 
-	MCPE_Screen_vtable = (void**) dlsym(RTLD_DEFAULT, "_ZTV6Screen");
-	//MCPE_Screen_vtable = (void**) dlsym(RTLD_DEFAULT, "_ZTV15StartMenuScreen");
+	MCPE_Screen_vtable = (void**) ((int) dlsym(RTLD_DEFAULT, "_ZTV6Screen") + 8);
+	customScreenVtable = (void**) malloc(41*4);
+	memcpy(customScreenVtable, MCPE_Screen_vtable, 41*4);
+
 	//MCPE_Minecraft_setScreen = (void (*)(MCPE_Minecraft*, MCPE_Screen*)) dlsym(RTLD_DEFAULT, "_ZN9Minecraft9setScreenEP6Screen");
 	MCPE_Screen_Screen = (void (*)(MCPE_Screen*)) dlsym_weak(MCPE_Handle, "_ZN6ScreenC1Ev");
 	MCPE_Screen_renderGameBehind = (void (*)(MCPE_Screen*)) dlsym(RTLD_DEFAULT, "_ZN6Screen16renderGameBehindEv");
@@ -413,8 +436,10 @@ void setScreen(GUIScreen* screen) {
 
 	currentScreen = screen;
 	currentScreenCustom = true;
-	if(screen == NULL)
+	if(screen == NULL) {
+		setScreenReal(MCPE_Minecraft_instance, NULL);
 		return;
+	}
 
 	if(MCPE_Minecraft_instance != NULL) {
 		//screen->init();
