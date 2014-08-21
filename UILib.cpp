@@ -71,20 +71,6 @@ typedef struct {
 } MCPE_Touch_THeader;
 typedef struct {
 	void* vtable; // 4
-	int idk1; // 8; always 0? *possibly a pointer*
-	void* idk2; // 12
-	int x; // 16
-	int y; // 20
-	int width; // 24
-	int height; // 28
-	int idk3; // 32; always 0?
-	int idk4; // 36; always 0?
-	void* idk5; // 40; sometimes null
-	std::string msg; // 44
-	int id; // 48
-} MCPE_TextBox;
-typedef struct {
-	void* vtable; // 4
 	int idk1; // 8
 	void* idk2; // 12
 	int x; // 16
@@ -257,7 +243,6 @@ const int BACKGROUND_GAME = 1;
 const int BACKGROUND_GAME_DARK = 2;
 const int BACKGROUND_MENU = 3;
 class GUIScreen: public GUIBaseScreen {
-public:
 	MCPE_Screen* screen;
 	int bgType;
 
