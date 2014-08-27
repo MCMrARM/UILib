@@ -244,67 +244,77 @@ const int BACKGROUND_GAME_DARK = 2;
 const int BACKGROUND_MENU = 3;
 class GUIScreen: public GUIBaseScreen {
 	MCPE_Screen* screen;
-	int bgType;
-
-	void _init() {
-		currentScreen->init();
-	}
-
-	void _render(int i1, int i2, float f) {
-		GUIScreen* vthis = (GUIScreen*) currentScreen;
-		if(vthis->bgType == BACKGROUND_DIRT) {
-			MCPE_Screen_renderDirtBackground((MCPE_Screen*) this, 0);
-		}else if(vthis->bgType == BACKGROUND_MENU) {
-			MCPE_Screen_renderMenuBackground((MCPE_Screen*) this, f);
-		}else if(vthis->bgType == BACKGROUND_GAME_DARK) {
-			MCPE_Screen_renderBackground((MCPE_Screen*) this, 0);
-		}
-
-		currentScreen->render();
-	}
-
-	/*
-	void _renderGameBehind() {
-		GUIScreen* vthis = (GUIScreen*) currentScreen;
-		if(vthis->bgType == BACKGROUND_GAME || vthis->bgType == BACKGROUND_GAME_DARK) {
-			MCPE_Screen_renderGameBehind((MCPE_Screen*) this);
-		}
-	}
-	*/
-
-	void _handleBackEvent(bool b) {
-		GUIScreen* vthis = (GUIScreen*) currentScreen;
-		if(vthis != NULL && !vthis->handleBackEvent()){
-			currentScreen = guiScreen;
-			MCPE_Screen_handleBackEvent((MCPE_Screen*) this, b);
-		}
-	}
 
 	public:
-	int i;
+	int bgType;
 
 	GUIScreen(int bgType):GUIBaseScreen() {
 		this->bgType = bgType;
-		this->i = 0;
 
 		screen = (MCPE_Screen*) operator new(0x8c);
 		MCPE_Screen_Screen(screen);
 		screen->vtable = customScreenVtable;
+	}
 
-		screen->vtable[2] = (void*) &GUIScreen::_render;
-		screen->vtable[3] = (void*) &GUIScreen::_init;
-		screen->vtable[10] = (void*) &GUIScreen::_handleBackEvent;
-		//screen->vtable[16] = (void*) &GUIScreen::_renderGameBehind; - doesn't work
+	MCPE_Screen* getMCPEScreenInstance() {
+		return screen;
 	}
 
 	void show() {
 		MCPE_Minecraft_setScreen(MCPE_Minecraft_instance, screen);
 	}
 
+	virtual void tick() {
+		//
+	}
+
 	virtual bool handleBackEvent() {
 		return false;
 	}
 };
+
+void _MCPE_Screen_init(MCPE_Screen* sthis) {
+	currentScreen->init();
+}
+
+void _MCPE_Screen_render(MCPE_Screen* sthis, int i1, int i2, float f) {
+	GUIScreen* vthis = (GUIScreen*) currentScreen;
+	if(vthis->bgType == BACKGROUND_DIRT) {
+		MCPE_Screen_renderDirtBackground(sthis, 0);
+	}else if(vthis->bgType == BACKGROUND_MENU) {
+		MCPE_Screen_renderMenuBackground(sthis, f);
+	}else if(vthis->bgType == BACKGROUND_GAME_DARK) {
+		MCPE_Screen_renderBackground(sthis, 0);
+	}
+
+	currentScreen->render();
+}
+
+/*
+void _MCPE_Screen_renderGameBehind(MCPE_Screen* sthis) {
+	GUIScreen* vthis = (GUIScreen*) currentScreen;
+	if(vthis->bgType == BACKGROUND_GAME || vthis->bgType == BACKGROUND_GAME_DARK) {
+		MCPE_Screen_renderGameBehind((MCPE_Screen*) this);
+	}
+}
+*/
+
+void _MCPE_Screen_handleBackEvent(MCPE_Screen* sthis, bool b) {
+	GUIScreen* vthis = (GUIScreen*) currentScreen;
+	if(vthis != NULL && !vthis->handleBackEvent()){
+		currentScreen = guiScreen;
+		MCPE_Screen_handleBackEvent(sthis, b);
+	}
+}
+
+static void (*MCPE_Screen_tick)(MCPE_Screen*);
+void _MCPE_Screen_tick(MCPE_Screen* sthis) {
+	MCPE_Screen_tick(sthis);
+	GUIScreen* vthis = (GUIScreen*) currentScreen;
+	if(vthis != NULL){
+		vthis->tick();
+	}
+}
 
 static void (*MCPE_Gui_render)(MCPE_Gui*, float, bool, int, int);
 void renderGUI(MCPE_Gui* gui, float f, bool b, int i1, int i2) {
@@ -378,9 +388,15 @@ void setupGUI() {
 	MCPE_Screen_vtable = (void**) ((int) dlsym(RTLD_DEFAULT, "_ZTV6Screen") + 8);
 	customScreenVtable = (void**) malloc(41*4);
 	memcpy(customScreenVtable, MCPE_Screen_vtable, 41*4);
+	customScreenVtable[2] = (void*) &_MCPE_Screen_render;
+	customScreenVtable[3] = (void*) &_MCPE_Screen_init;
+	customScreenVtable[10] = (void*) &_MCPE_Screen_handleBackEvent;
+	customScreenVtable[11] = (void*) &_MCPE_Screen_tick;
+	//screen->vtable[16] = (void*) &_MCPE_Screen_renderGameBehind; - doesn't work
 
 	//MCPE_Minecraft_setScreen = (void (*)(MCPE_Minecraft*, MCPE_Screen*)) dlsym(RTLD_DEFAULT, "_ZN9Minecraft9setScreenEP6Screen");
 	MCPE_Screen_Screen = (void (*)(MCPE_Screen*)) dlsym_weak(MCPE_Handle, "_ZN6ScreenC1Ev");
+	MCPE_Screen_tick = (void (*)(MCPE_Screen*)) dlsym(RTLD_DEFAULT, "_ZN6Screen4tickEv");
 	MCPE_Screen_renderGameBehind = (void (*)(MCPE_Screen*)) dlsym(RTLD_DEFAULT, "_ZN6Screen16renderGameBehindEv");
 	MCPE_Screen_renderBackground = (void (*)(MCPE_Screen*, int)) dlsym(RTLD_DEFAULT, "_ZN6Screen16renderBackgroundEi");
 	MCPE_Screen_renderDirtBackground = (void (*)(MCPE_Screen*, int)) dlsym(RTLD_DEFAULT, "_ZN6Screen20renderDirtBackgroundEi");

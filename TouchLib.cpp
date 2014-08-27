@@ -16,6 +16,7 @@
 
 #include <dlfcn.h>
 #include <android/log.h>
+#include <math.h>
 #include "mcpelauncher.h"
 
 typedef void* MCPE_MouseAction;
@@ -86,7 +87,7 @@ void texturesHook(MCPE_Textures* textures, MCPE_Options* options, MCPE_AppPlatfo
 
 	screenWidthReal = MCPE_AppPlatform_getScreenWidth(platform);
 	if(screenWidth != 0) {
-		pixelSize = screenWidthReal/screenWidth;
+		pixelSize = (int) roundf((float)screenWidthReal/screenWidth);
 	}
 }
 
@@ -96,7 +97,7 @@ void setSizeHook(MCPE_Screen* s, int width, int height) {
 	screenWidth = width;
 	screenHeight = height;
 	if(screenWidthReal != 0) {
-		pixelSize = screenWidthReal/screenWidth;
+		pixelSize = (int) roundf((float)screenWidthReal/screenWidth);
 	}
 }
 
